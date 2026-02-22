@@ -63,7 +63,7 @@ public class JobMatchingService {
                     String.valueOf(job.getId()),
                     jobContent,
                     Map.of(
-                            "jobId", job.getId(),
+                            "jobId", String.valueOf(job.getId()),
                             "title", job.getTitle(),
                             "type", job.getType().name(),
                             "seniority", job.getSeniority().name(),
@@ -114,8 +114,8 @@ public class JobMatchingService {
             SearchRequest searchRequest = SearchRequest.builder()
                     .query(userProfile) // The text to search for
                     .topK(topK) // Number of results
-                    // .filterExpression("status == 'OPEN'")
-                    .similarityThreshold(0.85) // Minimum similarity score (0.0 to 1.0)
+                    .filterExpression("status == 'OPEN'")
+                    .similarityThreshold(0.6) // Minimum similarity score (0.0 to 1.0)
                     .build();
 
             List<Document> similarDocuments = vectorStore.similaritySearch(searchRequest);
@@ -161,5 +161,29 @@ public class JobMatchingService {
             throw new RuntimeException("Failed to find similar jobs", e);
         }
 
+    }
+
+    public double calculateMatchScore(User user, Job job) {
+        try {
+            String userProfile = buildUserProfile(user);
+
+            SearchRequest searchRequest = SearchRequest.builder()
+                    .query(userProfile)
+                    .topK(1)
+                    .filterExpression("jobId == '" + job.getId() + "'")
+                    .similarityThreshold(0.0)
+                    .build();
+
+            List<Document> results = vectorStore.similaritySearch(searchRequest);
+
+            return results.stream()
+                    .mapToDouble(doc -> doc.getScore() == null ? 0.0 : doc.getScore())
+                    .findFirst()
+                    .orElse(0.0);
+
+        } catch (Exception e) {
+            log.error("Error calculating match score for user {} and job {}", user.getId(), job.getId(), e);
+            return 0.0;
+        }
     }
 }

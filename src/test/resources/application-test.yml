@@ -65,7 +65,6 @@ spring:
       - org.springframework.boot.autoconfigure.data.redis.RedisReactiveAutoConfiguration
       - com.azure.spring.cloud.autoconfigure.monitor.AzureMonitorAutoConfiguration
       - io.opentelemetry.instrumentation.spring.autoconfigure.OpenTelemetryAutoConfiguration
-
 server:
   port: 0
   servlet:
