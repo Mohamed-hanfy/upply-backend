@@ -51,12 +51,6 @@ spring:
         onnx:
           model-uri: https://huggingface.co/sentence-transformers/all-MiniLM-L6-v2/resolve/main/onnx/model.onnx
 
-    vectorstore:
-      redis:
-        initialize-schema: true
-        index-name: upply-vector-index
-        prefix: "upply:embedding:"
-        dimension: 384
 
   data:
     redis:
@@ -74,6 +68,28 @@ spring:
       monitor:
         instrumentation:
           connection-string: ${OBSERVE}
+  kafka:
+    bootstrap-servers: ${KAFKA_URL}
+    properties:
+      security.protocol: SSL
+      ssl.truststore.type: JKS
+      ssl.keystore.type: PKCS12
+      ssl.truststore.location: ${KAFKA_TRUSTSTORE_PATH}
+      ssl.truststore.password: ${KAFKA_SSL_PASSWORD}
+      ssl.keystore.location: ${KAFKA_KEYSTORE_PATH}
+      ssl.keystore.password: ${KAFKA_SSL_PASSWORD}
+      ssl.key.password: ${KAFKA_SSL_PASSWORD}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+    consumer:
+      group-id: application-matching-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      auto-offset-reset: earliest
+      properties:
+        spring.json.trusted.packages: "com.upply.*"
+
 server:
   port: 8080
   servlet:
