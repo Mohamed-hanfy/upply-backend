@@ -72,10 +72,10 @@ spring:
     bootstrap-servers: ${KAFKA_URL}
     properties:
       security.protocol: SSL
-      ssl.truststore.location: file:${KAFKA_TRUSTSTORE_PATH}
+      ssl.truststore.location: ${KAFKA_TRUSTSTORE_PATH}
       ssl.truststore.password: ${KAFKA_SSL_PASSWORD}
       ssl.truststore.type: JKS
-      ssl.keystore.location: file:${KAFKA_KEYSTORE_PATH}
+      ssl.keystore.location: ${KAFKA_KEYSTORE_PATH}
       ssl.keystore.password: ${KAFKA_SSL_PASSWORD}
       ssl.keystore.type: PKCS12
       ssl.key.password: ${KAFKA_SSL_PASSWORD}
