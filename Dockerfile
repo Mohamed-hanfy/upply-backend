@@ -17,6 +17,8 @@ WORKDIR /app
 RUN groupadd -r spring && useradd -r -g spring spring
 
 COPY --from=build /app/target/upply-*.jar app.jar
+RUN mkdir -p /app/aiven
+COPY --from=build /app/src/main/resources/aiven/ /app/aiven/
 
 RUN chown -R spring:spring /app
 USER spring:spring
