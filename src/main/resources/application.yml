@@ -70,15 +70,17 @@ spring:
           connection-string: ${OBSERVE}
   kafka:
     bootstrap-servers: ${KAFKA_URL}
+    # Move SSL settings out of 'properties' into 'ssl'
+    ssl:
+      trust-store-location: ${KAFKA_TRUSTSTORE_PATH}
+      trust-store-password: ${KAFKA_SSL_PASSWORD}
+      trust-store-type: JKS
+      key-store-location: ${KAFKA_KEYSTORE_PATH}
+      key-store-password: ${KAFKA_SSL_PASSWORD}
+      key-store-type: PKCS12
+      key-password: ${KAFKA_SSL_PASSWORD}
     properties:
       security.protocol: SSL
-      ssl.truststore.type: JKS
-      ssl.keystore.type: PKCS12
-      ssl.truststore.location: ${KAFKA_TRUSTSTORE_PATH}
-      ssl.truststore.password: ${KAFKA_SSL_PASSWORD}
-      ssl.keystore.location: ${KAFKA_KEYSTORE_PATH}
-      ssl.keystore.password: ${KAFKA_SSL_PASSWORD}
-      ssl.key.password: ${KAFKA_SSL_PASSWORD}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
