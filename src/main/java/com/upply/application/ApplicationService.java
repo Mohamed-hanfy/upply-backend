@@ -131,7 +131,7 @@ public class ApplicationService {
 
         application.setStatus(newStatus);
 
-        // add email to kafka queue;
+        //TODO add email to kafka queue;
         applicationRepository.save(application);
         return applicationMapper.toApplicationResponse(application);
     }

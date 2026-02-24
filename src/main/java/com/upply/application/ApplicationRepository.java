@@ -8,6 +8,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface ApplicationRepository extends JpaRepository<Application, Long> {
@@ -30,4 +31,7 @@ public interface ApplicationRepository extends JpaRepository<Application, Long> 
     Optional<Application> getApplicationByIdForRecruiter(Long applicationId);
 
     boolean existsApplicationByApplicantAndJob(User applicant, Job job);
+
+    @Query("select a from Application a where a.job.postedBy.id = ?#{principal.getId()} and a.job.id = :jobId")
+    List<Application> findAllByJobIdForRecruiter(Long jobId);
 }
