@@ -175,9 +175,8 @@ public class JobMatchingService {
                     .build();
 
             List<Document> results = vectorStore.similaritySearch(searchRequest);
-
             return results.stream()
-                    .mapToDouble(doc -> doc.getScore() == null ? 0.0 : doc.getScore())
+                    .mapToDouble(doc -> doc.getScore() == null ? 0.0 : (Math.round((doc.getScore()*100.0))/100.0))
                     .findFirst()
                     .orElse(0.0);
 

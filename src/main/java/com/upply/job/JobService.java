@@ -23,11 +23,14 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -39,6 +42,10 @@ public class JobService {
     private final SkillRepository skillRepository;
     private final ApplicationRepository applicationRepository;
     private final JobMatchingService jobMatchingService;
+    private final ApplicationExcelExportService applicationExcelExportService;
+    private final ExportTaskMapper exportTaskMapper;
+    //TODO: use key-value database like redis!!
+    private final Map<String, ExportTask> exportTasks = new ConcurrentHashMap<>();
 
     @Transactional
     public JobResponse createJob(@Valid JobRequest request, Authentication connectedUser) {
@@ -250,6 +257,10 @@ public class JobService {
 
         List<ApplicationResponse> applicationResponses = applications.stream()
                 .map(applicationMapper::toApplicationResponse)
+                .sorted(Comparator.comparing(
+                        ApplicationResponse::matchingRatio,
+                        Comparator.nullsLast(Double::compareTo)
+                ).reversed())
                 .toList();
 
         return new PageResponse<>(
@@ -282,4 +293,98 @@ public class JobService {
                 applications.isLast());
     }
 
+    public ExportTaskResponse startExportTask(Long jobId, Authentication connectedUser) {
+        Job job = jobRepository.findById(jobId)
+                .orElseThrow(() -> new ResourceNotFoundException("Job with ID " + jobId + " not found"));
+        User user = ((User) connectedUser.getPrincipal());
+
+        if (!Objects.equals(job.getPostedBy().getId(), user.getId())) {
+            throw new OperationNotPermittedException("You are not permitted to pause this job");
+        }
+
+        List<Application> applications =
+                applicationRepository.findAllByJobIdForRecruiter(jobId)
+                        .stream()
+                        .sorted(Comparator.comparing(
+                                Application::getMatchingRatio,
+                                Comparator.nullsLast(Double::compareTo)
+                        ).reversed())
+                        .toList();
+
+
+        String taskId = UUID.randomUUID().toString();
+        ExportTask task = new ExportTask(taskId, jobId);
+        exportTasks.put(taskId, task);
+
+        Thread.ofVirtual().name("export-job-" + jobId).start(() -> processExport(task, applications));
+
+        return exportTaskMapper.toExportTaskResponse(task);
+    }
+
+    private void processExport(ExportTask task, List<Application> applications) {
+        try {
+            byte[] data = applicationExcelExportService.generateExcel(applications);
+            task.setData(data);
+            task.setStatus(ExportTask.Status.COMPLETED);
+        } catch (Exception e) {
+            task.setStatus(ExportTask.Status.FAILED);
+            task.setErrorMessage(e.getMessage());
+        }
+    }
+
+    public ExportTask getExportTask(String taskId) {
+        ExportTask task = exportTasks.get(taskId);
+        if (task == null) {
+            throw new ResourceNotFoundException("Export task with ID " + taskId + " not found");
+        }
+        return task;
+    }
+
+    public ExportTaskResponse getExportTaskStatus(Long jobId, String taskId, Authentication connectedUser) {
+        Job job = jobRepository.findById(jobId)
+                .orElseThrow(() -> new ResourceNotFoundException("Job with ID " + jobId + " not found"));
+        User user = ((User) connectedUser.getPrincipal());
+        ExportTask task = getExportTask(taskId);
+        if ((!Objects.equals(job.getPostedBy().getId(), user.getId())) && task.getJobId() == jobId) {
+            throw new OperationNotPermittedException("You are not permitted to pause this job");
+        }
+
+
+        String downloadUrl = null;
+        if (task.getStatus() == ExportTask.Status.COMPLETED) {
+            downloadUrl = "/api/v1/jobs/" + jobId + "/applications/export/" + taskId + "/download";
+        }
+
+        return exportTaskMapper.toExportTaskResponse(task, downloadUrl);
+    }
+
+    public String getJobTitle(Long jobId) {
+        Job job = jobRepository.findById(jobId)
+                .orElseThrow(() -> new ResourceNotFoundException("Job with ID " + jobId + " not found"));
+        return job.getTitle();
+    }
+
+    public byte[] getExportedFileData(Long jobId, String taskId, Authentication connectedUser) {
+        Job job = jobRepository.findById(jobId)
+                .orElseThrow(() -> new ResourceNotFoundException("Job with ID " + jobId + " not found"));
+        User user = ((User) connectedUser.getPrincipal());
+
+        if (!Objects.equals(job.getPostedBy().getId(), user.getId())) {
+            throw new OperationNotPermittedException("You are not permitted to pause this job");
+        }
+        ExportTask task = getExportTask(taskId);
+
+        if (task.getStatus() != ExportTask.Status.COMPLETED) {
+            throw new BusinessLogicException("Export task is not completed yet");
+        }
+
+        return task.getData();
+    }
+
+    @Scheduled(fixedDelay = 60_000)
+    public void cleanExpiredTasks() {
+        exportTasks.entrySet().removeIf(
+                entry -> entry.getValue().getExpireAt().isBefore(Instant.now())
+        );
+    }
 }

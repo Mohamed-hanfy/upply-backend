@@ -9,7 +9,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.*;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
@@ -170,4 +170,65 @@ public class JobController {
     ) {
         return ResponseEntity.ok(jobService.getJobApplicationsByStatus(id, status, pageNumber, size));
     }
+
+    @PostMapping("/{id}/applications/export")
+    @Operation(
+            summary = "Start export of job applications to Excel",
+            description = "Initiates an asynchronous export of all applications for a specific job to an Excel (.xlsx) file. Returns a task ID that can be used to poll for status and download the file."
+    )
+    public ResponseEntity<ExportTaskResponse> startExportJobApplications(
+            @Parameter(
+                    description = "The ID of the job",
+                    required = true,
+                    example = "1"
+            )
+            @PathVariable Long id,
+            Authentication connectedUser
+    ) {
+        return ResponseEntity.accepted().body(jobService.startExportTask(id, connectedUser));
+    }
+
+    @GetMapping("/{id}/applications/export/{taskId}/status")
+    @Operation(
+            summary = "Poll export task status",
+            description = "Returns the current status of an export task. Poll this endpoint until status is COMPLETED or FAILED."
+    )
+    public ResponseEntity<ExportTaskResponse> getExportStatus(
+            @Parameter(description = "The ID of the job", required = true, example = "1")
+            @PathVariable Long id,
+            @Parameter(description = "The export task ID", required = true)
+            @PathVariable String taskId,
+            Authentication connectedUser
+    ) {
+        return ResponseEntity.ok(jobService.getExportTaskStatus(id, taskId, connectedUser));
+    }
+
+    @GetMapping("/{id}/applications/export/{taskId}/download")
+    @Operation(
+            summary = "Download exported Excel file",
+            description = "Downloads the completed Excel export file. Only available after the export task status is COMPLETED."
+    )
+    public ResponseEntity<byte[]> downloadExportedFile(
+            @Parameter(description = "The ID of the job", required = true, example = "1")
+            @PathVariable Long id,
+            @Parameter(description = "The export task ID", required = true)
+            @PathVariable String taskId,
+            Authentication connectedUser
+    ) {
+        byte[] data = jobService.getExportedFileData(id,taskId,connectedUser);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType(
+                "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"));
+        headers.setContentDisposition(
+                ContentDisposition.builder("attachment")
+                        .filename("job_" + jobService.getJobTitle(id)+ "_applications.xlsx")
+                        .build()
+        );
+
+        return ResponseEntity.ok()
+                .headers(headers)
+                .body(data);
+    }
 }
+
