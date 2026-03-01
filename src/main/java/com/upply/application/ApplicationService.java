@@ -11,6 +11,8 @@ import com.upply.exception.custom.OperationNotPermittedException;
 import com.upply.exception.custom.ResourceNotFoundException;
 import com.upply.job.Job;
 import com.upply.job.JobRepository;
+import com.upply.notification.dto.DispatchPayload;
+import com.upply.notification.dto.NotificationEvent;
 import com.upply.profile.resume.AzureStorageService;
 import com.upply.profile.resume.Resume;
 import com.upply.profile.resume.ResumeRepository;
@@ -31,8 +33,10 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 import static com.upply.config.KafkaConfig.APPLICATION_MATCH_CALC_TOPIC;
+import static com.upply.config.KafkaConfig.NOTIFICATION_EVENTS;
 
 @Service
 @RequiredArgsConstructor
@@ -44,7 +48,8 @@ public class ApplicationService {
     private final JobRepository jobRepository;
     private final ResumeRepository resumeRepository;
     private final AzureStorageService azureStorageService;
-    private final KafkaTemplate<String, ApplicationMatchEvent> kafkaTemplate;
+    private final KafkaTemplate<String, ApplicationMatchEvent> kafkaApplicationTemplate;
+    private final KafkaTemplate<String, NotificationEvent> notificationKafkaTemplate;
 
     @Transactional
     public ApplicationResponse createJobApplication(ApplicationRequest applicationRequest)
@@ -81,13 +86,32 @@ public class ApplicationService {
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             @Override
             public void afterCommit() {
-                kafkaTemplate.send(APPLICATION_MATCH_CALC_TOPIC,
+                kafkaApplicationTemplate.send(APPLICATION_MATCH_CALC_TOPIC,
                                 String.valueOf(application.getId()), event)
                         .exceptionally(ex -> {
                             log.error("Failed to publish match event for application {}",
                                     application.getId(), ex);
                             return null;
                         });
+                log.info("Publishing notification event for applicationId: {}", application.getId());
+                notificationKafkaTemplate.send(NOTIFICATION_EVENTS,
+                        String.valueOf(application.getId()),
+                        NotificationEvent.builder()
+                                .eventId(UUID.randomUUID().toString())
+                                .eventType("JOB_APPLICATION_SUBMITTED")
+                                .userId(user.getId())
+                                .channels(List.of(DispatchPayload.Channel.EMAIL))   needed
+                                .payload(Map.of(
+                                        "jobTitle", job.getTitle(),
+                                        "company",  "TODO",
+                                        "status",   ApplicationStatus.SUBMITTED.name()
+                                ))
+                                .build()
+                ).exceptionally(ex -> {
+                    log.error("Failed to publish submission notification for application {}",
+                            application.getId(), ex);
+                    return null;
+                });
             }
         });
 
