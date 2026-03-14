@@ -2,6 +2,7 @@ package com.upply.application.dto;
 
 import com.upply.application.enums.ApplicationStatus;
 import com.upply.profile.socialLink.dto.SocialLinkResponse;
+import jakarta.persistence.Lob;
 import lombok.Builder;
 
 import java.util.List;
@@ -28,6 +29,8 @@ public record ApplicationResponse(
 
         ApplicationStatus status,
 
-        double matchingRatio
+        double matchingRatio,
+
+        String summary
 ) {
 }

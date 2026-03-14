@@ -5,23 +5,29 @@ import com.upply.exception.custom.ResourceNotFoundException;
 import com.upply.job.Job;
 import com.upply.job.JobMatchingService;
 import com.upply.job.JobRepository;
+import com.upply.profile.resume.AzureStorageService;
+import com.upply.profile.resume.Resume;
 import com.upply.user.User;
 import com.upply.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import static com.upply.config.KafkaConfig.APPLICATION_MATCH_CALC_TOPIC;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@Transactional
 public class ApplicationMatchConsumer {
     private final JobMatchingService jobMatchingService;
     private final ApplicationRepository applicationRepository;
     private final UserRepository userRepository;
     private final JobRepository jobRepository;
+    private final AzureStorageService azureStorageService;
+    private  final ApplicationSummaryService applicationSummaryService;
 
     @KafkaListener(
             topics = APPLICATION_MATCH_CALC_TOPIC,
@@ -40,8 +46,15 @@ public class ApplicationMatchConsumer {
                     .orElseThrow(() -> new RuntimeException("Job not found: " + event.getJobId()));
 
             double score = jobMatchingService.calculateMatchScore(user, job);
-
             application.setMatchingRatio(score);
+
+            Resume resume = application.getResume();
+            String resumeTxt = applicationSummaryService.extractText(azureStorageService.downloadFile(resume.getBlobName()));
+
+            String summary = applicationSummaryService.callAi(score, job, user, resumeTxt);
+
+            application.setSummary(summary);
+
             applicationRepository.save(application);
 
             log.info("Saved matchingRatio: {} for applicationId: {}", score, event.getApplicationId());
