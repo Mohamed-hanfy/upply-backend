@@ -21,6 +21,7 @@ import com.upply.job.dto.ExportTaskMapper;
 import com.upply.job.dto.MatchedJobListResponse;
 import com.upply.job.dto.JobListResponse;
 import com.upply.notification.dto.NotificationEvent;
+import com.upply.organization.Organization;
 import com.upply.profile.skill.Skill;
 import com.upply.profile.skill.SkillRepository;
 import com.upply.user.User;
@@ -92,6 +93,9 @@ class JobServiceTest {
     private User testUser;
 
     @Mock
+    private Organization testOrganization;
+
+    @Mock
     private Job testJob;
 
     @Mock
@@ -104,6 +108,8 @@ class JobServiceTest {
         TransactionSynchronizationManager.initSynchronization();
 
         when(testUser.getId()).thenReturn(1L);
+        when(testUser.getOrganization()).thenReturn(testOrganization);
+        when(testOrganization.getName()).thenReturn("Test Organization");
         when(testSkill.getId()).thenReturn(1L);
         when(testJob.getId()).thenReturn(1L);
         when(testJob.getTitle()).thenReturn("Software Engineer");

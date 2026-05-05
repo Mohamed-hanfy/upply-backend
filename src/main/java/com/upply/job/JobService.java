@@ -70,6 +70,13 @@ public class JobService {
     @CachePut(value = "JOB_CACHE", key = "#result.id")
     public JobResponse createJob(@Valid JobRequest request, Authentication connectedUser) {
 
+        User user = (User) connectedUser.getPrincipal();
+
+        if (user.getOrganization() == null) {
+            throw new OperationNotPermittedException(
+                    "You must be connected to an organization before creating a job");
+        }
+
         Set<Skill> skills = new HashSet<>(
                 skillRepository.findAllById(request.getSkillIds()));
 
@@ -79,8 +86,9 @@ public class JobService {
 
         Job job = jobMapper.toJob(request, skills);
 
-        User user = (User) connectedUser.getPrincipal();
         job.setPostedBy(user);
+        job.setOrganization(user.getOrganization());
+        job.setOrganizationName(user.getOrganization().getName());
 
         Job savedJob = jobRepository.save(job);
 
