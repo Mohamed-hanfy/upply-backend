@@ -2,7 +2,9 @@ package com.upply.organization;
 
 import com.upply.common.PageResponse;
 import com.upply.job.dto.JobListResponse;
-import com.upply.organization.dto.OrganizationRequest;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.upply.organization.dto.ConnectToOrganizationRequest;
+import com.upply.organization.dto.ConnectToOrganizationResponse;
 import com.upply.organization.dto.OrganizationResponse;
 import com.upply.organization.dto.OrganizationUpdateRequest;
 import io.swagger.v3.oas.annotations.Operation;
@@ -25,17 +27,6 @@ import org.springframework.web.bind.annotation.*;
 public class OrganizationController {
 
     private final OrganizationService organizationService;
-
-    @PostMapping
-    @Operation(
-            summary = "Create a new organization",
-            description = "Creates a new organization record and registers the authenticated user as its first recruiter."
-    )
-    public ResponseEntity<OrganizationResponse> createOrganization(
-            @Valid @RequestBody OrganizationRequest request,
-            Authentication connectedUser) {
-        return ResponseEntity.ok(organizationService.createOrganization(request, connectedUser));
-    }
 
     @GetMapping("/{id}")
     @Operation(
@@ -77,5 +68,28 @@ public class OrganizationController {
             @Min(value = 1, message = "Page size must be at least 1")
             @Max(value = 50, message = "Page size must not exceed 50") int size) {
         return ResponseEntity.ok(organizationService.getOrganizationOpenJobs(id, pageNumber, size));
+    }
+
+    @PostMapping("/connect")
+    @Operation(
+            summary = "Initiate connection to an organization",
+            description = "Validates business email domain and sends verification email to connect to an existing organization or create a new one."
+    )
+    public ResponseEntity<ConnectToOrganizationResponse> connectToOrganization(
+            @Valid @RequestBody ConnectToOrganizationRequest request,
+            Authentication connectedUser) throws JsonProcessingException {
+        com.upply.user.User user = (com.upply.user.User) connectedUser.getPrincipal();
+        return ResponseEntity.ok(organizationService.initiateConnection(request, user));
+    }
+
+    @GetMapping("/connect/verify")
+    @Operation(
+            summary = "Verify business email and complete connection",
+            description = "Verifies the token sent to the user's business email and completes the connection to the organization."
+    )
+    public ResponseEntity<ConnectToOrganizationResponse> verifyAndConnect(
+            @Parameter(description = "Verification token", required = true, example = "abc123xyz")
+            @RequestParam("token") String token) throws JsonProcessingException {
+        return ResponseEntity.ok(organizationService.verifyAndConnect(token));
     }
 }
