@@ -10,7 +10,8 @@ public enum EmailTemplate {
     JOB_APPLICATION_UPDATED("job_application_update"),
     JOB_APPLICATION_SUBMITTED("job_application_submitted"),
     JOB_POSTED_SUCCESSFULLY("job_posted_successfully"),
-    NEW_MATCHED_JOBS("new_matched_jobs");
+    NEW_MATCHED_JOBS("new_matched_jobs"),
+    BUSINESS_EMAIL_VERIFICATION("business_email_verification");
 
     private final String name;
 

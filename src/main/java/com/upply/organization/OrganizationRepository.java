@@ -9,8 +9,12 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
+
 @Repository
 public interface OrganizationRepository extends JpaRepository<Organization, Long> {
+
+    Optional<Organization> findByDomain(String domain);
 
     @Query("SELECT j FROM Job j WHERE j.organization.id = :orgId AND j.status = :status")
     Page<Job> findJobsByOrganizationIdAndStatus(@Param("orgId") Long orgId, @Param("status") JobStatus status, Pageable pageable);

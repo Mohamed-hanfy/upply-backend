@@ -43,6 +43,9 @@ public class User implements UserDetails, Principal {
     @Column(unique = true)
     private String email;
 
+    @Column(unique = true)
+    private String businessEmail;
+
     @Column(nullable = false, length = 255)
     private String password;
 
