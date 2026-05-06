@@ -177,7 +177,8 @@ public class OrganizationService {
 
         tokenRepository.save(token);
 
-        String verificationLink = verificationBaseUrl + "?token=" + tokenString;
+        String fullToken = tokenString + ":" + encodedData;
+        String verificationLink = verificationBaseUrl + "?token=" + fullToken;
 
         Map<String, Object> vars = new HashMap<>();
         vars.put("firstName", user.getFirstName());

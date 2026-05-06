@@ -53,6 +53,7 @@ public class SecurityConfig {
                         //Anyone can access these endpoints without logging in
                         .requestMatchers(
                                 "/auth/**",
+                                "/organizations/connect/verify",
                                 "/swagger-ui/**",
                                 "/swagger-ui.html",
                                 "/v3/api-docs/**",
