@@ -41,6 +41,7 @@ public class JwtFilter extends OncePerRequestFilter {
         // skip authentication and call the rest of the filter chain; user stays unauthenticated.
         if(
                 request.getServletPath().startsWith("/auth")
+                || request.getServletPath().startsWith("/organizations/connect/verify")
                 || request.getMethod().equals("OPTIONS")
         )
         {
